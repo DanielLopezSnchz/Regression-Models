@@ -1,0 +1,107 @@
+---
+title: "Regression Models Course Project"
+author: "Daniel Arturo Lopez Sanchez"
+date: "8/16/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+This is the Regression Models Course Project. The instructions are the following:
+You work for *Motor Trend*, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+
+* Is an automatic or manual transmission better for MPG?
+* Quantify the MPG difference between automatic and manual transmissions
+
+## Enviroment
+Loading the libraries and data set
+```{r , echo=TRUE, results='hide'}
+library(datasets)
+library(dplyr)
+data("mtcars")
+```
+
+## Exploratory Data Analysis
+```{r , echo=TRUE}
+summary(mtcars$mpg)
+qqnorm(mtcars$mpg)
+```
+with this plot we can assume our mpg variable to be normal and work on it with no trouble.
+
+### Converting to factor the non numeric variables
+```{r , echo=TRUE}
+mtcars$cyl <- factor(mtcars$cyl) # number of cylinders
+mtcars$vs <- factor(mtcars$vs) # Engine type (V-shaped or straight)
+mtcars$am <- factor(mtcars$am, labels = c("Automatic", "Manual")) # Transmission
+mtcars$gear <- factor(mtcars$gear) # Number of forward gears
+mtcars$carb <- factor(mtcars$carb) # Number of carburetors
+```
+### Automatic vs Manual Transmission
+We want to visually see the difference in mpg if whether the car's transmission type is Automatic or Manual
+```{r , echo=TRUE}
+mean_transmission <- mtcars %>% group_by(am) %>% summarise(average=mean(mpg))
+head(mean_transmission)
+boxplot(mpg~am, data = mtcars, xlab = "Transmission Type", 
+        ylab = "Miles per Gallon", col = c("light green", "light blue"))
+```
+Now that we've seen the difference in mpg on automatic and manual transmission, The want to fit a model to evaluate if this difference is statistically significant,
+And also to check if there are some other confounding variables that affect directly the mileage.
+
+## Simple Linear Regression
+We want to fit a linear model with only one regressor, which is "am" - Transmission type.
+```{r , echo=TRUE}
+fit1 <- lm(formula = mpg~am, data = mtcars)
+summary(fit1)
+```
+We can see that the difference in Miles per Gallon on transmission type is indeed highly significant with a p-value of nearly 0.0003. Seeing this fit, we can think of saying that the average Miles per gallon of a given car increases by 7.25 if the transmission is Manual, holding everything else constant.
+However, if we analyze the Adjusted R-squared value, we can observe that our model is just explaining one third of the variance in Miles per Gallon. We can do a better fitted model including some other variables with some correlation to mpg.
+
+## Multivariate Linear Regression
+To know which variables to include in our model we are going to perform an Analysis of variance including all of our predictors.
+```{r , echo=TRUE}
+variance_analysis_mpg <- aov(formula = mpg~., data = mtcars)
+summary(variance_analysis_mpg)
+```
+We can see that the number of cylinders, displacement and weight are quite significant for our dependent variable.
+
+We are going to fit a new model adding this 3 regressors.
+```{r , echo=TRUE}
+fit2 <- lm(formula = mpg~am+cyl+disp+wt, data = mtcars)
+summary(fit2)
+```
+We can see by fitting this new model that we are now explaining almost 84%
+of the mpg variance with this variables.
+
+## Evaluating our model
+To evaluate the performance of our model we are going to do the process of model selection, using ANOVA.
+```{r , echo=TRUE}
+anova(fit1,fit2)
+```
+We can now select Model 2 as the best for explaining our independent variable "miles per gallon"
+
+## Residual Plots
+```{r , echo=TRUE}
+par(mfrow = c(2, 2))
+plot(fit2)
+```
+In our Residuals vs Fitted plot, there seems like there isn't any patterns, which is good. Also our residuals are normally distributed.
+
+## So.. Is an automatic or manual transmission better for MPG?
+At first we saw a statistically significant difference (with a 0.05 level of significance) between Automatic and Manual Transmission. However, there are other variables that we can consider more significant, like the number of cylinders or the weight. We can see that the average miles per gallon of a given car decreases by 6.32, being this an 8-cylinder car; holding everything else constant.
+
+But, why did we observed earlier that Transmission Type on a vehicle is highly significant on Miles per gallon? We can answer this by analyzing the correlation between the predictors.
+```{r , echo=TRUE}
+cat("Correlation between transmission and weight: ", cor(x = as.numeric(mtcars$am), y = as.numeric(mtcars$wt)))
+cat("Correlation between transmission and the number of cylinders: ", cor(x = as.numeric(mtcars$am), y = as.numeric(mtcars$cyl)))
+```
+The correlation coefficient values are not that low. The significance of our very first model can be attributed to this correlation.
+
+
+
+
+
+
+
